@@ -31,6 +31,7 @@ async function run() {
     const reviewCollection = client.db("bistrodb").collection("reviews");
     const cartCollection = client.db("bistrodb").collection("carts");
 
+    // menu related apis
 
     app.get('/menu', async (req, res) => {
       const result = await menuCollection.find().toArray();
