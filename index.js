@@ -29,6 +29,7 @@ async function run() {
 
     const menuCollection = client.db("bistrodb").collection("menu");
     const reviewCollection = client.db("bistrodb").collection("reviews");
+    const userCollection = client.db("bistrodb").collection("users");
     const cartCollection = client.db("bistrodb").collection("carts");
 
     // menu related apis
@@ -51,6 +52,14 @@ async function run() {
       res.send(result);
     })
 
+
+    // user related apis
+
+    app.post('/users',  async(req, res) => {
+      const user = req.body;
+      const result = await userCollection.insertOne(user);
+      res.send(result);
+    })
 
     // Cart related apis
 
