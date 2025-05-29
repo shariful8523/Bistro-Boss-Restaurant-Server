@@ -2,6 +2,7 @@ require('dotenv').config()
 const express = require('express');
 const app = express();
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const port = process.env.PORT || 5000;
 
 //middleware
@@ -32,13 +33,39 @@ async function run() {
     const userCollection = client.db("bistrodb").collection("users");
     const cartCollection = client.db("bistrodb").collection("carts");
 
+    // jwt related api
+
+    app.post('/jwt', async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN, { expiresIn: '1h' });
+      res.send({ token });
+    });
+
+    // middlewares
+
+    const verifyToken = (req, res, next) => {
+      if(!req.headers.authorization){
+        return res.status(401).send({message: 'forbidden access'});
+      }
+      const token = req.headers.authorization.split('')[1];
+      jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
+        if(err){
+          return res.status(401).send({message: 'forbidden access'})
+        }
+        req.decoded = decoded;
+        next();
+      })
+   
+    }
+
+
     // menu related apis
 
     app.get('/menu', async (req, res) => {
       const result = await menuCollection.find().toArray();
       res.send(result);
     })
-      
+
     // review related apis
 
     app.get('/review', async (req, res) => {
@@ -48,44 +75,56 @@ async function run() {
 
     app.post('/review', async (req, res) => {
       const Reviews = req.body;
-      const result =await reviewCollection.insertOne(Reviews);
+      const result = await reviewCollection.insertOne(Reviews);
       res.send(result);
     })
 
 
     // user related apis
 
-    app.get('/users', async(req, res) => {
+    app.get('/users', verifyToken, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     })
 
-    app.post('/users',  async(req, res) => {
+    app.post('/users', async (req, res) => {
       const user = req.body;
       // insert email if user doesnt exists
-      
-      const query = {email: user.email}
+
+      const query = { email: user.email }
       const existingUser = await userCollection.findOne(query);
-      if( existingUser) {
+      if (existingUser) {
         return res.send({ message: 'user already exists', insertedId: null })
       }
       const result = await userCollection.insertOne(user);
       res.send(result);
     })
 
-    app.delete('/users/:id', async(req, res) => {
+    app.patch('/users/admin/:id', async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          role: 'admin'
+        }
+      }
+      const result = await userCollection.updateOne(filter, updatedDoc)
+      res.send(result)
+    });
+
+    app.delete('/users/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
       const result = await userCollection.deleteOne(query)
       res.send(result);
-    })
+    });
 
     // Cart related apis
 
 
     app.get('/carts', async (req, res) => {
       const email = req.query.email;
-      const query = { email: email};
+      const query = { email: email };
       const result = await cartCollection.find(query).toArray();
       res.send(result);
     })
@@ -97,9 +136,9 @@ async function run() {
     })
 
 
-    app.delete('/carts/:id', async(req, res) => {
+    app.delete('/carts/:id', async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
+      const query = { _id: new ObjectId(id) }
       const result = await cartCollection.deleteOne(query);
       res.send(result);
     })
