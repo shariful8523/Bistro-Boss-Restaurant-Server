@@ -61,11 +61,11 @@ async function run() {
 
     const verifyAdmin = async (req, res, next) => {
       const email = req.decoded.email;
-      const query = { email: email};
+      const query = { email: email };
       const user = await userCollection.findOne(query);
       const isAdmin = user?.role === 'admin';
       if (!isAdmin) {
-        return res.status(403).send({message: 'forbidden access '});
+        return res.status(403).send({ message: 'forbidden access ' });
       }
       next();
     }
@@ -79,18 +79,47 @@ async function run() {
       res.send(result);
     })
 
-    app.post('/menu', verifyToken, verifyAdmin, async(req, res) => {
+
+    app.get('/menu/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await menuCollection.findOne(query);
+      res.send(result)
+    })
+
+
+    app.post('/menu', verifyToken, verifyAdmin, async (req, res) => {
       const item = req.body;
       const result = await menuCollection.insertOne(item);
       res.send(result);
 
     })
 
+    app.patch('/menu/:id', async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)}
+      const updatedDoc = {
+        $set: {
+          name: item.name,
+          category: item.category,
+          price: item.price,
+          recipe: item.recipe,
+          image: item.image
+        }
+      }
+
+      const result = await menuCollection.updateOne(filter, updatedDoc)
+      res.send(result);
+    })
+
+
+
     // delete related apis
 
     app.delete('/menu/:id', verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
+      const query = { _id: new ObjectId(id) }
       const result = await menuCollection.deleteOne(query);
       res.send(result);
     })
@@ -118,18 +147,18 @@ async function run() {
     app.get('/users/admin/:email', verifyToken, async (req, res) => {
       const email = req.params.email;
 
-      
+
       if (req.decoded.email !== email) {
         return res.status(403).send({ message: 'unauthorized access' });
       }
 
-      const query = { email: email} ;
+      const query = { email: email };
       const user = await userCollection.findOne(query);
       let admin = false;
-      if(user) {
+      if (user) {
         admin = user?.role === 'admin';
       }
-      res.send({ admin }); 
+      res.send({ admin });
     });
 
 
